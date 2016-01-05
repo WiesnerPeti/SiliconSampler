@@ -1,26 +1,19 @@
 #include <pebble.h>
-#include <stdlib.h>
 
 static Window *s_main_window;
 
 static char s_battery_buffer[16];
-static TextLayer *s_battery_layer;
-
 static char s_monthtime_buffer[20];
-static TextLayer *s_month_layer;
-
 static char s_daytime_buffer[20];
-static TextLayer *s_day_layer;
-
 static char s_time_buffer[8];
-static TextLayer *s_time_layer;
 
-static char s_wallText1[70];
-static char s_wallText2[70];
-static char s_wallText3[70];
-static char s_wallText4[70];
+static TextLayer *s_second_layer;
+static TextLayer *s_first_layer;
 
 static GFont s_font;
+static GFont s_small_font;
+
+static int s_phase = 0;
 
 #define GRectMaxY(__RECT__) (__RECT__.origin.y + __RECT__.size.h)
 
@@ -36,6 +29,8 @@ static void updateData() {
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
     
+    s_phase = (temp / 60) % 3;
+    
     // Get hours
     strftime(s_time_buffer, sizeof(s_time_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
     
@@ -43,61 +38,54 @@ static void updateData() {
     strftime(s_daytime_buffer, sizeof(s_daytime_buffer), "%A", tick_time);
     
     // Get month time
-    strftime(s_monthtime_buffer, sizeof(s_monthtime_buffer), "%h %d", tick_time);
+    strftime(s_monthtime_buffer, sizeof(s_monthtime_buffer), "%Y %h %d", tick_time);
     
     // Get battery
     BatteryChargeState charge_state = battery_state_service_peek();
-    snprintf(s_battery_buffer, sizeof(s_battery_buffer), "%d%%", charge_state.charge_percent);
-    
-    snprintf(s_wallText1, sizeof(s_wallText1), "%s %s %s %s", s_time_buffer, s_daytime_buffer, s_monthtime_buffer, s_battery_buffer);
-    snprintf(s_wallText2, sizeof(s_wallText2), "%s %s %s %s", s_daytime_buffer, s_monthtime_buffer, s_battery_buffer, s_time_buffer);
-    snprintf(s_wallText3, sizeof(s_wallText3), "%s %s %s %s", s_monthtime_buffer, s_battery_buffer, s_time_buffer, s_daytime_buffer);
-    snprintf(s_wallText4, sizeof(s_wallText4), "%s %s %s %s", s_battery_buffer, s_time_buffer, s_daytime_buffer, s_monthtime_buffer);
-    
-    text_layer_set_text(s_time_layer, s_wallText1);
-    text_layer_set_text(s_day_layer, s_wallText2);
-    text_layer_set_text(s_month_layer, s_wallText3);
-    text_layer_set_text(s_battery_layer, s_wallText4);
+    snprintf(s_battery_buffer, sizeof(s_battery_buffer), "Battery:%d%%", charge_state.charge_percent);
 }
 
-static void layoutTexts()
+static void updateTextLayers()
 {
-    srand(time(NULL));
+    text_layer_set_text(s_first_layer, s_time_buffer);
     
+    switch (s_phase) {
+        case 1:
+            text_layer_set_text(s_second_layer, s_monthtime_buffer);
+            break;
+        case 2:
+            text_layer_set_text(s_second_layer, s_battery_buffer);
+            break;
+        case 0:
+        default:
+            text_layer_set_text(s_second_layer, s_daytime_buffer);
+            break;
+    }
+}
+
+static void layoutTextLayers()
+{
     Layer *window_layer = window_get_root_layer(s_main_window);
     GRect bounds = layer_get_bounds(window_layer);
     
-    GSize textSize = GSize(2*bounds.size.w, 44);
+    GRect firstFrame = GRect(0,
+                            bounds.size.h/2.0 - 50,
+                            bounds.size.w,
+                            76);
     
-    GRect timeFrame = GRect((rand()%4)*2-10,
-                            -8,
-                            textSize.w,
-                            textSize.h);
+    GRect secondFrame = GRect(0,
+                           GRectMaxY(firstFrame)+2,
+                           bounds.size.w,
+                           18);
     
-    GRect dayFrame = GRect((rand()%6)*4-20,
-                           GRectMaxY(timeFrame),
-                           textSize.w,
-                           textSize.h);
-    
-    GRect monthFrame = GRect((rand()%5)*6-30,
-                             GRectMaxY(dayFrame),
-                             textSize.w,
-                             textSize.h);
-    
-    GRect batteryFrame = GRect((rand()%5)*2-8,
-                               GRectMaxY(monthFrame),
-                               textSize.w,
-                               textSize.h);
-    
-    layer_set_frame(text_layer_get_layer(s_time_layer), timeFrame);
-    layer_set_frame(text_layer_get_layer(s_day_layer), dayFrame);
-    layer_set_frame(text_layer_get_layer(s_month_layer), monthFrame);
-    layer_set_frame(text_layer_get_layer(s_battery_layer), batteryFrame);
+    layer_set_frame(text_layer_get_layer(s_first_layer), firstFrame);
+    layer_set_frame(text_layer_get_layer(s_second_layer), secondFrame);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     updateData();
-    layoutTexts();
+    updateTextLayers();
+    layoutTextLayers();
 }
 
 static TextLayer * textLayerWithFont(GFont font)
@@ -105,8 +93,8 @@ static TextLayer * textLayerWithFont(GFont font)
     TextLayer *layer = text_layer_create(GRectZero);
     
     text_layer_set_background_color(layer, GColorClear);
-    text_layer_set_text_color(layer, GColorWhite);
-    text_layer_set_text_alignment(layer, GTextAlignmentLeft);
+    text_layer_set_text_color(layer, GColorBlack);
+    text_layer_set_text_alignment(layer, GTextAlignmentCenter);
     text_layer_set_font(layer, font);
     
     return layer;
@@ -118,40 +106,37 @@ static void main_window_load(Window *window) {
     
     //RESOURCES
     // Create GFont
-    s_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SAN_FRANSISCO_44));
+    s_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_STEEL_FISH_74));
+    s_small_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SAN_FRANSISCO_16));
     
-    s_time_layer    = textLayerWithFont(s_font);
-    s_day_layer     = textLayerWithFont(s_font);
-    s_month_layer   = textLayerWithFont(s_font);
-    s_battery_layer = textLayerWithFont(s_font);
+    s_first_layer    = textLayerWithFont(s_font);
+    s_second_layer   = textLayerWithFont(s_small_font);
     
     // Add it as a child layer to the Window's root layer
-    layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
-    layer_add_child(window_layer, text_layer_get_layer(s_day_layer));
-    layer_add_child(window_layer, text_layer_get_layer(s_month_layer));
-    layer_add_child(window_layer, text_layer_get_layer(s_battery_layer));
+    layer_add_child(window_layer, text_layer_get_layer(s_first_layer));
+    layer_add_child(window_layer, text_layer_get_layer(s_second_layer));
     
     updateData();
-    layoutTexts();
+    updateTextLayers();
+    layoutTextLayers();
 }
 
 static void main_window_unload(Window *window) {
 
     // Destroy TextLayer
-    text_layer_destroy(s_time_layer);
-    text_layer_destroy(s_day_layer);
-    text_layer_destroy(s_month_layer);
-    text_layer_destroy(s_battery_layer);
+    text_layer_destroy(s_first_layer);
+    text_layer_destroy(s_second_layer);
     
     // Destroy Fonts
     fonts_unload_custom_font(s_font);
+    fonts_unload_custom_font(s_small_font);
 }
 
 static void init() {
     
     // Create main Window element and assign to pointer
     s_main_window = window_create();
-    window_set_background_color(s_main_window,GColorBlack);
+    window_set_background_color(s_main_window,GColorWhite);
     
     // Set handlers to manage the elements inside the Window
     window_set_window_handlers(s_main_window, (WindowHandlers) {

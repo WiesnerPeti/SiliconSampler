@@ -16,7 +16,13 @@
     "media": [
       {
         "type": "font",
-        "name": "SAN_FRANSISCO_44",
+        "name": "STEEL_FISH_74",
+        "file": "steelfish.ttf",
+        "compatibility":"2.7"
+      },
+      {
+        "type": "font",
+        "name": "SAN_FRANSISCO_16",
         "file": "SystemSanFranciscoDisplayBold.ttf",
         "compatibility":"2.7"
       }
