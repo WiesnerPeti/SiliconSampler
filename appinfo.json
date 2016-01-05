@@ -1,0 +1,26 @@
+{
+  "uuid": "e0899a62-c6ce-4e77-9a6d-b583a555a851",
+  "shortName": "SiliconSampler",
+  "longName": "SiliconSampler",
+  "companyName": "MakeAwesomeHappen",
+  "versionLabel": "1.0",
+  "sdkVersion": "3",
+  "targetPlatforms": ["aplite", "basalt", "chalk"],
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": [
+      {
+        "type": "font",
+        "name": "SAN_FRANSISCO_44",
+        "file": "SystemSanFranciscoDisplayBold.ttf",
+        "compatibility":"2.7"
+      }
+    ]
+
+  }
+}
