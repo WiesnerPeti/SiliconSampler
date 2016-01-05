@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include <stdlib.h>
 
 static Window *s_main_window;
 
@@ -27,16 +28,6 @@ static GFont s_font;
 void logFrame(GRect frame)
 {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Frame %d %d %d %d", frame.origin.x, frame.origin.y, frame.size.w, frame.size.h);
-}
-
-GSize get_common_textlayer_content_size(TextLayer *layer, GFont font)
-{
-    const char * text = text_layer_get_text(layer);
-    return graphics_text_layout_get_content_size(text,
-                                                 font,
-                                                 GRect(0,0,1000,1000),
-                                                 GTextOverflowModeWordWrap,
-                                                 GTextAlignmentRight);
 }
 
 //Update
@@ -71,18 +62,32 @@ static void updateData() {
 
 static void layoutTexts()
 {
+    srand(time(NULL));
+    
     Layer *window_layer = window_get_root_layer(s_main_window);
     GRect bounds = layer_get_bounds(window_layer);
     
     GSize textSize = GSize(2*bounds.size.w, 44);
     
-    GRect timeFrame = GRect(0, -8, textSize.w, textSize.h);
+    GRect timeFrame = GRect((rand()%4)*2-10,
+                            -8,
+                            textSize.w,
+                            textSize.h);
     
-    GRect dayFrame = GRect(0, GRectMaxY(timeFrame), textSize.w, textSize.h);
+    GRect dayFrame = GRect((rand()%6)*4-20,
+                           GRectMaxY(timeFrame),
+                           textSize.w,
+                           textSize.h);
     
-    GRect monthFrame = GRect(0, GRectMaxY(dayFrame), textSize.w, textSize.h);
+    GRect monthFrame = GRect((rand()%5)*6-30,
+                             GRectMaxY(dayFrame),
+                             textSize.w,
+                             textSize.h);
     
-    GRect batteryFrame = GRect(0, GRectMaxY(monthFrame), textSize.w, textSize.h);
+    GRect batteryFrame = GRect((rand()%5)*2-8,
+                               GRectMaxY(monthFrame),
+                               textSize.w,
+                               textSize.h);
     
     layer_set_frame(text_layer_get_layer(s_time_layer), timeFrame);
     layer_set_frame(text_layer_get_layer(s_day_layer), dayFrame);
