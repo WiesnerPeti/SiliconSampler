@@ -3,8 +3,8 @@
 static Window *s_main_window;
 
 static char s_battery_buffer[16];
-static char s_monthtime_buffer[20];
-static char s_daytime_buffer[20];
+static char s_date_buffer[20];
+static char s_weekday_buffer[20];
 static char s_time_buffer[8];
 
 static TextLayer *s_second_layer;
@@ -12,8 +12,6 @@ static TextLayer *s_first_layer;
 
 static GFont s_font;
 static GFont s_small_font;
-
-static int s_phase = 0;
 
 #define GRectMaxY(__RECT__) (__RECT__.origin.y + __RECT__.size.h)
 
@@ -28,38 +26,25 @@ static void updateData() {
     // Get a tm structure
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
-    
-    s_phase = (temp / 60) % 3;
-    
-    // Get hours
-    strftime(s_time_buffer, sizeof(s_time_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
-    
-    // Get day name
-    strftime(s_daytime_buffer, sizeof(s_daytime_buffer), "%A", tick_time);
-    
-    // Get month time
-    strftime(s_monthtime_buffer, sizeof(s_monthtime_buffer), "%Y %h %d", tick_time);
-    
-    // Get battery
-    BatteryChargeState charge_state = battery_state_service_peek();
-    snprintf(s_battery_buffer, sizeof(s_battery_buffer), "Battery:%d%%", charge_state.charge_percent);
-}
 
-static void updateTextLayers()
-{
+    strftime(s_time_buffer, sizeof(s_time_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
     text_layer_set_text(s_first_layer, s_time_buffer);
     
+    int s_phase = (temp / 60) % 3;
     switch (s_phase) {
         case 1:
-            text_layer_set_text(s_second_layer, s_monthtime_buffer);
+            strftime(s_date_buffer, sizeof(s_date_buffer), "%Y %h %d", tick_time);
+            text_layer_set_text(s_second_layer, s_date_buffer);
             break;
         case 2:
             text_layer_set_text(s_second_layer, s_battery_buffer);
             break;
         case 0:
-        default:
-            text_layer_set_text(s_second_layer, s_daytime_buffer);
+        default:{
+            strftime(s_weekday_buffer, sizeof(s_weekday_buffer), "%A", tick_time);
+            text_layer_set_text(s_second_layer, s_weekday_buffer);
             break;
+        }
     }
 }
 
@@ -84,8 +69,11 @@ static void layoutTextLayers()
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     updateData();
-    updateTextLayers();
-    layoutTextLayers();
+}
+
+static void battery_handler(BatteryChargeState charge_state) {
+  
+    snprintf(s_battery_buffer, sizeof(s_battery_buffer), "Battery:%d%%", charge_state.charge_percent);
 }
 
 static TextLayer * textLayerWithFont(GFont font)
@@ -101,23 +89,22 @@ static TextLayer * textLayerWithFont(GFont font)
 }
 
 static void main_window_load(Window *window) {
-    // Get information about the Window
+    
     Layer *window_layer = window_get_root_layer(window);
     
-    //RESOURCES
-    // Create GFont
-    s_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_STEEL_FISH_74));
-    s_small_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SAN_FRANSISCO_16));
+    s_font          = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_STEEL_FISH_74));
+    s_small_font    = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SAN_FRANSISCO_16));
     
     s_first_layer    = textLayerWithFont(s_font);
     s_second_layer   = textLayerWithFont(s_small_font);
     
-    // Add it as a child layer to the Window's root layer
     layer_add_child(window_layer, text_layer_get_layer(s_first_layer));
     layer_add_child(window_layer, text_layer_get_layer(s_second_layer));
     
+    battery_handler(battery_state_service_peek());
+
     updateData();
-    updateTextLayers();
+
     layoutTextLayers();
 }
 
@@ -147,14 +134,16 @@ static void init() {
     // Show the Window on the watch, with animated=true
     window_stack_push(s_main_window, true);
     
-    // Register with TickTimerService
     tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+
+    battery_state_service_subscribe(battery_handler);
 }
 
 static void deinit() {
     
-    // Destroy Window
     window_destroy(s_main_window);
+
+    battery_state_service_unsubscribe();
 }
 
 int main(void) {
