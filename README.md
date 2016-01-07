@@ -22,6 +22,11 @@ Add to the code
 Run (aka Debug.sh)
 
 	pebble logs --emulator=basalt
+	
+####Headers
+Definitions can be found at (example is for the basalt)
+
+	/Users/[USER_NAME]/Library/Application\ Support/Pebble\ SDK/SDKs/3.8.2/sdk-core/pebble/basalt/include/pebble.h
 
 ####Custom font compilation can stuck
 Fortunately it is a known issue with a [hacky fix](https://forums.getpebble.com/discussion/30424/pebble-build-stopped-around-building-resources).
