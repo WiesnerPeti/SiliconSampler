@@ -14,6 +14,7 @@ static GFont s_font;
 static GFont s_small_font;
 
 #define GRectMaxY(__RECT__) (__RECT__.origin.y + __RECT__.size.h)
+#define inRange(lower, v, upper) (lower <= v && v < upper)
 
 //Helpers
 void logFrame(GRect frame)
@@ -27,23 +28,42 @@ static void updateData() {
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
 
-    strftime(s_time_buffer, sizeof(s_time_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
+    //First layer is always time
+    strftime(s_time_buffer, sizeof(s_time_buffer), "%H:%M", tick_time);
     text_layer_set_text(s_first_layer, s_time_buffer);
-    
-    int s_phase = (temp / 60) % 3;
-    switch (s_phase) {
-        case 1:
-            strftime(s_date_buffer, sizeof(s_date_buffer), "%Y %h %d", tick_time);
-            text_layer_set_text(s_second_layer, s_date_buffer);
-            break;
-        case 2:
-            text_layer_set_text(s_second_layer, s_battery_buffer);
-            break;
-        case 0:
-        default:{
-            strftime(s_weekday_buffer, sizeof(s_weekday_buffer), "%A", tick_time);
-            text_layer_set_text(s_second_layer, s_weekday_buffer);
-            break;
+
+    int hour = tick_time->tm_hour;
+    int minutes = tick_time->tm_min;
+
+    //Away from desktop time, now the exact date is important
+    if (inRange(7, hour, 8) || inRange(12, hour, 13) || inRange(18, hour, 22))
+    {
+        strftime(s_date_buffer, sizeof(s_date_buffer), "%Y %h %d", tick_time);
+        text_layer_set_text(s_second_layer, s_date_buffer);
+    }
+    //Night time, battery important to charge if needed
+    else if (inRange(0, hour, 7) || hour == 22 || hour == 23)
+    {
+        text_layer_set_text(s_second_layer, s_battery_buffer);
+    }
+    //Rotate information
+    else
+    {
+        int s_phase = minutes % 3;
+        switch (s_phase) {
+            case 1:
+                strftime(s_date_buffer, sizeof(s_date_buffer), "%Y %h %d", tick_time);
+                text_layer_set_text(s_second_layer, s_date_buffer);
+                break;
+            case 2:
+                text_layer_set_text(s_second_layer, s_battery_buffer);
+                break;
+            case 0:
+            default:{
+                strftime(s_weekday_buffer, sizeof(s_weekday_buffer), "%A", tick_time);
+                text_layer_set_text(s_second_layer, s_weekday_buffer);
+                break;
+            }
         }
     }
 }
